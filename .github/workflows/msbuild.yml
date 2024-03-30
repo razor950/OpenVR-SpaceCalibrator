@@ -38,13 +38,25 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
 
-    - name: Restore NuGet packages
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
-
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       # Added /p:Platform=x64 to specify the target platform as x64.
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.PLATFORM_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Set short SHA
+      run: echo "SHORT_SHA=$(echo ${{ github.sha }}.Substring(0,7))" | Out-File -FilePath $env:GITHUB_ENV -Append
+      shell: powershell
+
+    - name: Zip artifacts
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Compress-Archive -Path "x64/${{env.BUILD_CONFIGURATION}}" -DestinationPath "ovr-sc_${{ env.SHORT_SHA }}_dev.zip"
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        prerelease: true
+        tag_name: dev
+        files: |
+          ovr-sc_${{ env.SHORT_SHA }}_dev.zip
